@@ -1,0 +1,243 @@
+<html>
+<head>
+    <title>Capitals</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <style>
+        body {
+            margin: 50px;
+            background-color: lightgray;
+            font-family: Verdana, Geneva, Tahoma, sans-serif
+        }
+
+        button {
+            margin:5px;
+        }
+        h1 {
+            margin: 20px;
+            color: green;
+            text-align: center;
+        }
+        h2 {
+            margin: 20px;
+            color: green;
+        }
+        .center {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            width: 50%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Capitals</h1>
+    <!--Image available from: https://simplemaps.com/resources/svg-world-->
+    <img src="world.jpg" alt="world" class="center">
+    <div id="create-update" style="display:none">
+        <h2><span id="createLabel">Create a</span> <span id="updateLabel">Update</span> Capital</h2>
+        <table class = "table" id ="createUpdateForm" >
+            <tr>
+                <td>id</td>
+                <td><input type="number" name="id" id ="id"></td>
+            </tr>
+            <tr>
+                <td>name</td>
+                <td><input type="text" name="name"></td>
+            </tr>
+            <tr>
+                <td>country</td>
+                <td><input type="text" name="country"></td>
+            </tr>
+            <tr>
+                <td>population</td>
+                <td><input type="number" name="population"></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td><button id="create-button" onClick="doCreate()" type="button" class="btn btn-success">Create</button></td>
+                <td><button id="update-button" onClick="doUpdate()" type="button" class="btn btn-success">Update</button></td>
+            </tr>
+        </table>
+    </div>
+    <div id="display">
+        <button onClick="showCreate()" type="button" class="btn btn-success">Create</button>
+        <table id = "capitalTable" class = "table">
+            <tr>
+                <th>ID</th>
+                <th>NAME</th>
+                <th>COUNTRY</th>
+                <th colspan="3">POPULATION</th>
+            </tr>                                       
+        </table>
+    </div>
+    <script>
+        function showCreate(){
+            document.getElementById('display').style.display = "none"
+            document.getElementById('create-button').style.display = "block"
+            document.getElementById('update-button').style.display = "none"
+            document.getElementById('create-update').style.display = "block"
+            document.getElementById('createLabel').style.display = "inline"
+            document.getElementById('updateLabel').style.display = "none"
+        }
+        function showUpdate(thisElen){
+            var rowElement = thisElen.parentNode.parentNode;
+ 
+            capital = readCapitalFromRow(rowElement)
+            populateForm(capital)
+
+            document.getElementById('display').style.display = "none"
+            document.getElementById('create-button').style.display = "none"
+            document.getElementById('update-button').style.display = "block"
+            document.getElementById('create-update').style.display = "block"
+            document.getElementById('createLabel').style.display = "none"
+            document.getElementById('updateLabel').style.display = "inline"       
+        }
+        function readCapitalFromRow(rowElement){
+            capital = {}
+            capital.id = rowElement.getAttribute("id");
+            capital.name = rowElement.cells[1].firstChild.textContent
+            capital.country = rowElement.cells[2].firstChild.textContent
+            capital.population = rowElement.cells[3].firstChild.textContent
+            return capital
+        }
+        function populateForm(capital){
+            var form = document.getElementById('createUpdateForm')
+
+            form.querySelector('input[name="id"]').value = capital.id
+            form.querySelector('input[name="id"]').disabled = true
+            form.querySelector('input[name="name"]').value = capital.name
+            form.querySelector('input[name="country"]').value = capital.country
+            form.querySelector('input[name="population"]').value =  capital.population
+        }
+        function clearForm(){
+            var form = document.getElementById('createUpdateForm')
+
+            form.querySelector('input[name="id"]').value = ''
+            form.querySelector('input[name="id"]').disabled = false
+            form.querySelector('input[name="name"]').value = ''
+            form.querySelector('input[name="country"]').value = ''
+            form.querySelector('input[name="population"]').value =  ''
+        }
+        function doCreate(){
+            //console.log("in")
+            capital = getCapitalFromForm()
+            $.ajax({
+                url:'/capitals',
+                data: JSON.stringify(capital),
+                method: 'POST',
+                dataType: 'JSON',
+                contentType: "application/json; charset-utf-8",
+                success: function(result){
+                    console.log(result)
+                    addCapitalToTable(capital)
+                    showDisplay()
+                    clearForm()
+                },
+                error: function(xhr, status, error){
+                    console.log("error" + error + " code:" +status)
+                }
+            })
+        }
+        function doUpdate(){
+            capital = getCapitalFromForm()
+            updateServer(capital)
+        }
+        function updateServer(capital){
+            $.ajax({
+                url:'/capitals/'+capital.id,
+                data: JSON.stringify(capital),
+                method: 'PUT',
+                dataType: 'JSON',
+                contentType: "application/json; charset-utf-8",
+                success: function(result){
+                    updateTableRow(capital)
+                    showDisplay()
+                    clearForm()
+                },
+                error: function(xhr, status, error){
+                    console.log("error" + error + " code:" +status)
+                }
+            })
+        }
+        function updateTableRow(capital){
+            rowElement = document.getElementById(capital.id)
+            rowElement.cells[1].firstChild.textContent = capital.name
+            rowElement.cells[2].firstChild.textContent = capital.country
+            rowElement.cells[3].firstChild.textContent = capital.population
+        }
+        function doDelete(thisElen){
+            var tableElement = document.getElementById('capitalTable');
+            var rowElement = thisElen.parentNode.parentNode;
+            var index = rowElement.rowIndex;
+            id = rowElement.getAttribute("id");
+            $.ajax({
+                url:'/capitals/'+id,
+                method: 'DELETE',
+                dataType: 'JSON',
+                contentType: "application/json; charset-utf-8",
+                success: function(result){
+                    tableElement.deleteRow(index);
+                },
+                error: function(xhr, status, error){
+                    console.log("error" + error + " code:" +status)
+                }
+            })
+        }
+        function getCapitalFromForm(){
+            var form = document.getElementById('createUpdateForm')
+            var capital = {}
+            capital.id = form.querySelector('input[name="id"]').value
+            capital.name = form.querySelector('input[name="name"]').value
+            capital.country = form.querySelector('input[name="country"]').value
+            capital.population = form.querySelector('input[name="population"]').value
+            //console.log("capital")
+            return capital
+        }
+        function showDisplay(){
+            document.getElementById('display').style.display = "block"
+            document.getElementById('create-update').style.display = "none"
+        }
+        host = window.location.origin
+        function populateTable(){
+            //ajax getAll
+            $.ajax({
+                url:host+'/capitals',
+                method: 'GET',
+                dataType: 'JSON',
+                success: function(results){
+                    for (capital of results){
+                        addCapitalToTable(capital)
+                    }
+                },
+                error: function(xhr, status, error){
+                    console.log("error" + error + " code:" +status)
+                }
+            })
+        }
+        function addCapitalToTable(capital){
+            //console.log("working")
+            tableElem = document.getElementById("capitalTable")
+            rowElem = tableElem.insertRow(-1)
+            rowElem.setAttribute("id", capital.id)
+            cell1 = rowElem.insertCell(0)
+            cell1.innerHTML = capital.id
+            rowElem.setAttribute("name", capital.name)
+            cell2 = rowElem.insertCell(1)
+            cell2.innerHTML = capital.name
+            rowElem.setAttribute("country", capital.country)
+            cell3 = rowElem.insertCell(2)
+            cell3.innerHTML = capital.country
+            rowElem.setAttribute("population", capital.population)
+            cell4 = rowElem.insertCell(3)
+            cell4.innerHTML = capital.population
+            cell5 = rowElem.insertCell(4)
+            cell5.innerHTML = '<button onclick ="showUpdate(this)" type="button" class="btn btn-success">Update</button>'
+            cell6 = rowElem.insertCell(5)
+            cell6.innerHTML = '<button onclick ="doDelete(this)" type="button" class="btn btn-success">Delete</button>'
+            }   
+        populateTable()
+    </script>
+</body>
+</html>
